@@ -1,0 +1,14 @@
+C:\Users\kassi\Downloads\trabalho-lp\target\wasm32-unknown-unknown\debug\deps\serde-03e3034e89dcd19b.d: C:\Users\kassi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\lib.rs C:\Users\kassi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\integer128.rs C:\Users\kassi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\mod.rs C:\Users\kassi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\de.rs C:\Users\kassi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\ser.rs C:\Users\kassi\Downloads\trabalho-lp\target\wasm32-unknown-unknown\debug\build\serde-fd3d678345e0c4cf\out/private.rs
+
+C:\Users\kassi\Downloads\trabalho-lp\target\wasm32-unknown-unknown\debug\deps\libserde-03e3034e89dcd19b.rlib: C:\Users\kassi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\lib.rs C:\Users\kassi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\integer128.rs C:\Users\kassi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\mod.rs C:\Users\kassi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\de.rs C:\Users\kassi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\ser.rs C:\Users\kassi\Downloads\trabalho-lp\target\wasm32-unknown-unknown\debug\build\serde-fd3d678345e0c4cf\out/private.rs
+
+C:\Users\kassi\Downloads\trabalho-lp\target\wasm32-unknown-unknown\debug\deps\libserde-03e3034e89dcd19b.rmeta: C:\Users\kassi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\lib.rs C:\Users\kassi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\integer128.rs C:\Users\kassi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\mod.rs C:\Users\kassi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\de.rs C:\Users\kassi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\ser.rs C:\Users\kassi\Downloads\trabalho-lp\target\wasm32-unknown-unknown\debug\build\serde-fd3d678345e0c4cf\out/private.rs
+
+C:\Users\kassi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\lib.rs:
+C:\Users\kassi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\integer128.rs:
+C:\Users\kassi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\mod.rs:
+C:\Users\kassi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\de.rs:
+C:\Users\kassi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\ser.rs:
+C:\Users\kassi\Downloads\trabalho-lp\target\wasm32-unknown-unknown\debug\build\serde-fd3d678345e0c4cf\out/private.rs:
+
+# env-dep:OUT_DIR=C:\\Users\\kassi\\Downloads\\trabalho-lp\\target\\wasm32-unknown-unknown\\debug\\build\\serde-fd3d678345e0c4cf\\out

@@ -1,0 +1,5 @@
+C:\Users\kassi\Downloads\trabalho-lp\target\debug\build\quote-003529af1e31d2aa\build_script_build-003529af1e31d2aa.d: C:\Users\kassi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\quote-1.0.42\build.rs
+
+C:\Users\kassi\Downloads\trabalho-lp\target\debug\build\quote-003529af1e31d2aa\build_script_build-003529af1e31d2aa.exe: C:\Users\kassi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\quote-1.0.42\build.rs
+
+C:\Users\kassi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\quote-1.0.42\build.rs:
