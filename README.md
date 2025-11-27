@@ -122,9 +122,12 @@ Este projeto está sob a licença MIT. Veja o arquivo LICENSE para detalhes.
 
 ---
 
-## 👤 Autor
+## 👤 Autores
 
-Desenvolvido como projeto de Linguagens de Programação.
+Erick William Marques Costa
+Luca Valderramos Cirino
+Lucas Silva Carneiro
+Kássio Medeiros Alves
 
 ---
 
