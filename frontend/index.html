@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notepad Multiusuário</title>
+    <link data-trunk rel="css" href="styles.css">
+</head>
+<body>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <script>
+        // congiguracaoes do firebase
+        const firebaseConfig = {
+        apiKey: "AIzaSyB6QfIESuk84fCcqyvO94JorIQFbrVshIk",
+        authDomain: "notepad-rust.firebaseapp.com",
+        projectId: "notepad-rust",
+        storageBucket: "notepad-rust.firebasestorage.app",
+        messagingSenderId: "49619333427",
+        appId: "1:49619333427:web:60938a9bdd941921770e46",
+        measurementId: "G-FQQWJ6N7EZ"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        window.auth = firebase.auth();
+        window.db = firebase.firestore();
+    </script>
+</body>
+</html>

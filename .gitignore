@@ -1,0 +1,78 @@
+# Rust
+/target/
+/**/*.rs.bk
+/Cargo.lock
+
+# WASM / Trunk
+/pkg/
+/dist/
+/cache/
+
+# Node
+/node_modules/
+
+# IDEs and editors
+/.vscode/
+/.idea/
+*.swp
+
+# macOS
+.DS_Store
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment
+.env
+
+# build artifacts
+/wasm32-unknown-unknown/
+# Root-level .gitignore
+
+# Rust
+/target/
+Cargo.lock
+**/*.rs.bk
+
+# Frontend
+frontend/target/
+frontend/dist/
+frontend/node_modules/
+
+# Backend (placeholder)
+backend/target/
+backend/node_modules/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dependências
+/node_modules/
+package-lock.json
+yarn.lock
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Variáveis de ambiente (se usar .env)
+.env
+.env.local
+.env.*.local
+
+# Cache
+.cache/
+dist/
