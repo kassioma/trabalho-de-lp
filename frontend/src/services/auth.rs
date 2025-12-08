@@ -28,7 +28,7 @@ impl AuthService {
         let promise = promise_res.map_err(|e| format!("Erro ao chamar função: {:?}", e))?;
         
         let result = JsFuture::from(js_sys::Promise::from(promise)).await
-            .map_err(|e| format!("Erro ao registrar: {:?}", e))?;
+            .map_err(|e| Self::map_auth_error(&e, "Erro ao registrar"))?;
         
         Self::parse_user_from_credential(&result)
     }
@@ -47,7 +47,7 @@ impl AuthService {
         let promise = promise_res.map_err(|e| format!("Erro ao chamar função: {:?}", e))?;
         
         let result = JsFuture::from(js_sys::Promise::from(promise)).await
-            .map_err(|e| format!("Erro ao fazer login: {:?}", e))?;
+            .map_err(|e| Self::map_auth_error(&e, "Erro ao fazer login"))?;
         
         Self::parse_user_from_credential(&result)
     }
@@ -63,7 +63,7 @@ impl AuthService {
         let promise = promise_res.map_err(|e| format!("Erro ao chamar função: {:?}", e))?;
         
         JsFuture::from(js_sys::Promise::from(promise)).await
-            .map_err(|e| format!("Erro ao sair: {:?}", e))?;
+            .map_err(|e| Self::map_auth_error(&e, "Erro ao sair"))?;
         Ok(())
     }
     
@@ -98,5 +98,31 @@ impl AuthService {
             .ok_or("Email inválido")?;
         
         Ok(User { uid, email })
+    }
+
+    fn map_auth_error(err: &JsValue, prefix: &str) -> String {
+        // Try to extract Firebase-style `code` and `message` fields from the error JsValue
+        let code = js_sys::Reflect::get(err, &JsValue::from_str("code")).ok()
+            .and_then(|v| v.as_string());
+        let message = js_sys::Reflect::get(err, &JsValue::from_str("message")).ok()
+            .and_then(|v| v.as_string());
+
+        if let Some(code) = code {
+            // Map common Firebase auth codes to friendly Portuguese messages
+            let friendly = match code.as_str() {
+                "auth/wrong-password" => "Senha incorreta. Verifique e tente novamente.",
+                "auth/user-not-found" => "Usuário não encontrado. Verifique o email cadastrado.",
+                "auth/invalid-email" => "Formato de email inválido.",
+                "auth/email-already-in-use" => "Este email já está em uso.",
+                "auth/weak-password" => "Senha muito fraca. Use pelo menos 6 caracteres.",
+                "auth/invalid-credential" => "Credenciais incorretas, tente novamente!",
+                _ => message.as_deref().unwrap_or(&code),
+            };
+            format!("{}: {}", prefix, friendly)
+        } else if let Some(msg) = message {
+            format!("{}: {}", prefix, msg)
+        } else {
+            format!("{}: erro desconhecido", prefix)
+        }
     }
 }
