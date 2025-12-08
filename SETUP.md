@@ -266,4 +266,4 @@ Se tudo estiver funcionando, parabéns! 🎉 Você está pronto para desenvolver
 
 ---
 
-**Última atualização**: 26 de novembro de 2025
+**Última atualização**: 08 de dezembro de 2025
