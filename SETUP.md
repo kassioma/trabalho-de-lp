@@ -35,6 +35,11 @@ rustc --version
 cargo --version
 ```
 
+- Adicione o target WebAssembly:
+  ```bash
+  rustup target add wasm32-unknown-unknown
+  ```
+
 ### 3. **Trunk** (ferramenta de build para Yew/WASM)
 - Instale via cargo:
   ```bash
