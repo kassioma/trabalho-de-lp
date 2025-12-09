@@ -1,5 +1,7 @@
 // src/components/note_editor.rs
-use yew::{use_state, prelude::*};
+use yew::{use_state, prelude::*, AttrValue, Html};
+use pulldown_cmark::{Parser, Options, html};
+use ammonia::clean;
 use crate::components::background_dropdown::BackgroundDropdown;
 use crate::models::note::{Note, NoteHistory};
 use crate::components::font_dropdown::{FontDropdown};
@@ -45,6 +47,13 @@ pub fn note_editor(props: &NoteEditorProps) -> Html {
         .unwrap_or_else(|| "Arial".to_string())
     });
 
+    // font size (px)
+    let font_size = use_state(|| {
+        props.note.as_ref()
+            .and_then(|n| n.font_size)
+            .unwrap_or(16u8)
+    });
+
     let on_font_select = {
         let selected_font = selected_font.clone();
         Callback::from(move |font: String| {
@@ -78,6 +87,9 @@ pub fn note_editor(props: &NoteEditorProps) -> Html {
         })
     };
     
+    // reference to textarea for selection manipulation
+    let textarea_ref = NodeRef::default();
+    
     let on_title_change = {
         let title = title.clone();
         Callback::from(move |e: InputEvent| {
@@ -103,6 +115,7 @@ pub fn note_editor(props: &NoteEditorProps) -> Html {
         let color = text_color.clone();
         let font = selected_font.clone();
         let background = background_color.clone();
+        let font_size = font_size.clone();
         
         Callback::from(move |_| {
             if title.is_empty() {
@@ -124,6 +137,7 @@ pub fn note_editor(props: &NoteEditorProps) -> Html {
                 n.color = color.clone().to_string();
                 n.background = background.clone().to_string();
                 n.font = font.clone().to_string();
+                n.font_size = Some(*font_size);
                 n
             } else {
                 Note::new(
@@ -133,6 +147,7 @@ pub fn note_editor(props: &NoteEditorProps) -> Html {
                     font.clone().to_string(),
                     color.clone().to_string(),
                     background.clone().to_string()
+                    , Some(*font_size)
                 )
             };
             
@@ -146,6 +161,31 @@ pub fn note_editor(props: &NoteEditorProps) -> Html {
             on_close.emit(());
         })
     };
+
+    // Preview mode
+    let preview = use_state(|| false);
+    let on_toggle_preview = {
+        let preview = preview.clone();
+        Callback::from(move |_| {
+            preview.set(!*preview);
+        })
+    };
+
+    // Full Markdown renderer using pulldown-cmark + ammonia for sanitization
+    fn markdown_to_html(src: &str) -> String {
+        let mut options = Options::empty();
+        options.insert(Options::ENABLE_TABLES);
+        options.insert(Options::ENABLE_FOOTNOTES);
+        options.insert(Options::ENABLE_STRIKETHROUGH);
+        options.insert(Options::ENABLE_TASKLISTS);
+
+        let parser = Parser::new_ext(src, options);
+        let mut html_output = String::new();
+        html::push_html(&mut html_output, parser);
+
+        // sanitize generated HTML
+        clean(&html_output)
+    }
 
     let on_earlier_click = {
         let history = history.clone();
@@ -171,6 +211,144 @@ pub fn note_editor(props: &NoteEditorProps) -> Html {
     
     let is_new = props.note.is_none();
     let char_count = content.len();
+    let preview_html = markdown_to_html(&*content);
+    
+    // formatting toolbar handlers
+    // helper: convert UTF-16 index (JS selectionStart/End) to Rust byte index
+    let utf16_to_byte_index = |s: &str, target: usize| -> usize {
+        let mut utf16_count: usize = 0;
+        for (byte_idx, ch) in s.char_indices() {
+            let ch_u32 = ch as u32;
+            let ch_utf16_len = if ch_u32 >= 0x10000 { 2 } else { 1 };
+            if utf16_count + ch_utf16_len > target {
+                return byte_idx;
+            }
+            utf16_count += ch_utf16_len;
+        }
+        s.len()
+    };
+
+    // Create reusable actions for bold/italic with toggle support
+    let do_bold = {
+        let content = content.clone();
+        let textarea_ref = textarea_ref.clone();
+        let utf16_to_byte_index = utf16_to_byte_index.clone();
+        Callback::from(move |_: ()| {
+            if let Some(elem) = textarea_ref.cast::<web_sys::HtmlTextAreaElement>() {
+                let val = elem.value();
+                let start = elem.selection_start().unwrap_or(Some(0)).unwrap_or(0) as u32;
+                let end = elem.selection_end().unwrap_or(Some(0)).unwrap_or(0) as u32;
+
+                if start < end {
+                    let s_byte = utf16_to_byte_index(&val, start as usize);
+                    let e_byte = utf16_to_byte_index(&val, end as usize);
+                    let before = &val[..s_byte];
+                    let selected = &val[s_byte..e_byte];
+                    let after = &val[e_byte..];
+
+                    // toggle: if already wrapped with ** on both sides, remove them
+                    if before.ends_with("**") && after.starts_with("**") {
+                        let new_before = &before[..before.len()-2];
+                        let new_after = &after[2..];
+                        let new = format!("{}{}{}", new_before, selected, new_after);
+                        elem.set_value(&new);
+                        content.set(new);
+                        let new_start = start - 2;
+                        let new_end = end - 2;
+                        let _ = elem.set_selection_range(new_start, new_end);
+                    } else {
+                        let new = format!("{}**{}**{}", before, selected, after);
+                        elem.set_value(&new);
+                        content.set(new);
+                        let new_start = start + 2;
+                        let new_end = end + 2;
+                        let _ = elem.set_selection_range(new_start, new_end);
+                    }
+                } else {
+                    // no selection: insert pair and place caret between
+                    let s_byte = utf16_to_byte_index(&val, start as usize);
+                    let before = &val[..s_byte];
+                    let after = &val[s_byte..];
+                    let new = format!("{}****{}", before, after);
+                    elem.set_value(&new);
+                    content.set(new);
+                    let caret = start + 2;
+                    let _ = elem.set_selection_range(caret, caret);
+                }
+                let _ = elem.focus();
+            }
+        })
+    };
+
+    let do_italic = {
+        let content = content.clone();
+        let textarea_ref = textarea_ref.clone();
+        let utf16_to_byte_index = utf16_to_byte_index.clone();
+        Callback::from(move |_: ()| {
+            if let Some(elem) = textarea_ref.cast::<web_sys::HtmlTextAreaElement>() {
+                let val = elem.value();
+                let start = elem.selection_start().unwrap_or(Some(0)).unwrap_or(0) as u32;
+                let end = elem.selection_end().unwrap_or(Some(0)).unwrap_or(0) as u32;
+
+                if start < end {
+                    let s_byte = utf16_to_byte_index(&val, start as usize);
+                    let e_byte = utf16_to_byte_index(&val, end as usize);
+                    let before = &val[..s_byte];
+                    let selected = &val[s_byte..e_byte];
+                    let after = &val[e_byte..];
+
+                    // toggle: if already wrapped with * on both sides, remove them
+                    if before.ends_with("*") && after.starts_with("*") {
+                        let new_before = &before[..before.len()-1];
+                        let new_after = &after[1..];
+                        let new = format!("{}{}{}", new_before, selected, new_after);
+                        elem.set_value(&new);
+                        content.set(new);
+                        let new_start = start - 1;
+                        let new_end = end - 1;
+                        let _ = elem.set_selection_range(new_start, new_end);
+                    } else {
+                        let new = format!("{}*{}*{}", before, selected, after);
+                        elem.set_value(&new);
+                        content.set(new);
+                        let new_start = start + 1;
+                        let new_end = end + 1;
+                        let _ = elem.set_selection_range(new_start, new_end);
+                    }
+                } else {
+                    let s_byte = utf16_to_byte_index(&val, start as usize);
+                    let before = &val[..s_byte];
+                    let after = &val[s_byte..];
+                    let new = format!("{}**{}", before, after);
+                    elem.set_value(&new);
+                    content.set(new);
+                    let caret = start + 1;
+                    let _ = elem.set_selection_range(caret, caret);
+                }
+                let _ = elem.focus();
+            }
+        })
+    };
+
+    let on_increase_font = {
+        let font_size = font_size.clone();
+        Callback::from(move |_| {
+            let current = *font_size;
+            if current < 72u8 {
+                font_size.set(current + 2);
+            }
+        })
+    };
+
+    let on_decrease_font = {
+        let font_size = font_size.clone();
+        Callback::from(move |_| {
+            let current = *font_size;
+            if current > 8u8 {
+                font_size.set(current.saturating_sub(2));
+            }
+        })
+    };
     
     
     html! {
@@ -192,13 +370,43 @@ pub fn note_editor(props: &NoteEditorProps) -> Html {
                 </div>
                 
                 <div class="form-group">
-                    <textarea
-                        class="note-content-input"
-                        placeholder="Escreva sua nota aqui..."
-                        style={format!("font-family: {}; background-color: {}; color: {}; ", *selected_font, *background_color, *text_color)}
-                        value={(*content).clone()}
-                        oninput={on_content_change}
-                    />
+                    if *preview {
+                        <div class="note-preview" style={format!("font-family: {}; background-color: {}; color: {}; padding: 12px; border-radius: 4px;", *selected_font, *background_color, *text_color)}>
+                            { Html::from_html_unchecked(AttrValue::from(preview_html.clone())) }
+                        </div>
+                    } else {
+                        <div>
+                            <div class="format-toolbar">
+                                <button class="format-btn" onmousedown={Callback::from(|e: MouseEvent| e.prevent_default())} onclick={Callback::from({ let do_bold = do_bold.clone(); move |_: MouseEvent| { do_bold.emit(()) } })} title="Negrito">{"B"}</button>
+                                <button class="format-btn" onmousedown={Callback::from(|e: MouseEvent| e.prevent_default())} onclick={Callback::from({ let do_italic = do_italic.clone(); move |_: MouseEvent| { do_italic.emit(()) } })} title="Itálico">{"I"}</button>
+                                <div class="font-size-controls">
+                                    <button class="format-btn" onclick={on_decrease_font.clone()} title="Diminuir fonte">{"-"}</button>
+                                    <span class="font-size-label">{ format!("{}px", *font_size) }</span>
+                                    <button class="format-btn" onclick={on_increase_font.clone()} title="Aumentar fonte">{"+"}</button>
+                                </div>
+                            </div>
+                            <textarea
+                                ref={textarea_ref.clone()}
+                                class="note-content-input"
+                                placeholder="Escreva sua nota aqui..."
+                                style={format!("font-family: {}; background-color: {}; color: {}; font-size: {}px;", *selected_font, *background_color, *text_color, *font_size)}
+                                value={(*content).clone()}
+                                oninput={on_content_change}
+                                onkeydown={Callback::from({ let do_bold = do_bold.clone(); let do_italic = do_italic.clone(); move |e: KeyboardEvent| {
+                                    if e.ctrl_key() || e.meta_key() {
+                                        let k = e.key();
+                                        if k.eq_ignore_ascii_case("b") {
+                                            e.prevent_default();
+                                            do_bold.emit(());
+                                        } else if k.eq_ignore_ascii_case("i") {
+                                            e.prevent_default();
+                                            do_italic.emit(());
+                                        }
+                                    }
+                                } })}
+                            />
+                        </div>
+                    }
                 </div>
                 <div class="dropdown-buttons">
                     <BackgroundDropdown selected_background={(*background_color).clone()} on_select={on_background_select} />
@@ -209,6 +417,9 @@ pub fn note_editor(props: &NoteEditorProps) -> Html {
                 <div class="editor-footer">
                     <span class="char-count">{ format!("{} caracteres", char_count) }</span>
                     <div class="editor-actions">
+                        <button onclick={on_toggle_preview.clone()} class="btn-secondary">
+                            { if *preview { "Editar" } else { "Visualizar" } }
+                        </button>
                         <button onclick={&on_earlier_click} class="btn-secondary">
                             { "Versão Anterior"}
                         </button>

@@ -33,7 +33,11 @@ pub fn font_dropdown(props: &FontDropdownProps) -> Html {
 
     html! {
     <div class="font-dropdown">
-        <button onclick={toggle_dropdown} class="btn-special">{ "Fonte de Texto" }</button>
+        <button onclick={toggle_dropdown} class="btn-special">
+            <span class="btn-icon">{ "🔤" }</span>
+            <span class="btn-label">{ "Fonte de Texto" }</span>
+            <span class={"btn-value"}>{ props.selected_font.clone() }</span>
+        </button>
         if *is_open.clone() {
             <div class="dropdown-menu">
                 { for fonts.iter().map(|font| {
@@ -43,8 +47,10 @@ pub fn font_dropdown(props: &FontDropdownProps) -> Html {
                         <button
                             onclick={Callback::from(move |_| on_select.emit(font_clone.clone()))}
                             class="dropdown-item"
+                            style={format!("display:flex;align-items:center;gap:10px;")}
                         >
-                            { font }
+                            <span class="font-sample" style={format!("font-family: {};", font)}>{ "Aa" }</span>
+                            <span>{ font }</span>
                         </button>
                     }
                 }) }

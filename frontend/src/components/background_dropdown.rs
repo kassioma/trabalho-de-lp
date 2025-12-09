@@ -37,7 +37,11 @@ pub fn background_dropdown(props: &BackgroundDropdownProps) -> Html {
 
     html! {
     <div class="background-dropdown">
-        <button onclick={toggle_dropdown} class="btn-special">{ "Fundo" }</button>
+        <button onclick={toggle_dropdown} class="btn-special">
+            <span class="btn-icon">{ "🖌️" }</span>
+            <span class="btn-label">{ "Fundo" }</span>
+            <span class={"btn-value"}>{ props.selected_background.clone() }</span>
+        </button>
         if *is_open.clone() {
             <div class="dropdown-menu">
                 { for colors.iter().map(|&(color_code, color_name)| {
@@ -46,8 +50,10 @@ pub fn background_dropdown(props: &BackgroundDropdownProps) -> Html {
                             <button
                                 onclick={Callback::from(move |_| on_select.emit(color_code.to_string()))}
                                 class="dropdown-item"
+                                style={format!("display:flex;align-items:center;gap:8px;")}
                             >
-                                { color_name }
+                                <span class="swatch" style={format!("background:{};", color_code)}></span>
+                                <span>{ color_name }</span>
                             </button>
                         }
                 }) }

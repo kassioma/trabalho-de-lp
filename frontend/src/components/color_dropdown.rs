@@ -37,7 +37,11 @@ pub fn color_dropdown(props: &ColorDropdownProps) -> Html {
 
     html! {
     <div class="color-dropdown">
-        <button onclick={toggle_dropdown} class="btn-special">{ "Cor" }</button>
+        <button onclick={toggle_dropdown} class="btn-special">
+            <span class="btn-icon">{ "🎨" }</span>
+            <span class="btn-label">{ "Cor" }</span>
+            <span class={"btn-value"}>{ props.selected_color.clone() }</span>
+        </button>
         if *is_open.clone() {
             <div class="dropdown-menu">
                 { for colors.iter().map(|&(color_code, color_name)| {
@@ -46,8 +50,10 @@ pub fn color_dropdown(props: &ColorDropdownProps) -> Html {
                             <button
                                 onclick={Callback::from(move |_| on_select.emit(color_code.to_string()))}
                                 class="dropdown-item"
+                                style={format!("display:flex;align-items:center;gap:8px;")}
                             >
-                                { color_name }
+                                <span class="swatch" style={format!("background:{};", color_code)}></span>
+                                <span>{ color_name }</span>
                             </button>
                         }
                 }) }

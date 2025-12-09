@@ -166,6 +166,10 @@ impl NotesService {
             .map_err(|_| "Erro ao definir background")?;
         Reflect::set(&obj, &"color".into(), &JsValue::from_str(&note.color))
             .map_err(|_| "Erro ao definir color")?;
+        if let Some(size) = note.font_size {
+            Reflect::set(&obj, &"fontSize".into(), &JsValue::from_f64(size as f64))
+                .map_err(|_| "Erro ao definir fontSize")?;
+        }
         Ok(obj.into())
     }
     
@@ -247,6 +251,11 @@ impl NotesService {
         .ok()
         .and_then(|v|v.as_string())
         .unwrap_or_default();
+
+        let font_size = Reflect::get(&data_obj, &"fontSize".into())
+            .ok()
+            .and_then(|v| v.as_f64())
+            .map(|n| n as u8);
         
         Ok(Note {
             id,
@@ -259,6 +268,8 @@ impl NotesService {
             font,
             background,
             color
+            ,
+            font_size
         })
     }
 }

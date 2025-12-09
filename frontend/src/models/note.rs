@@ -13,11 +13,13 @@ pub struct Note {
     pub history: Vec<NoteHistory>,
     pub font: String,
     pub background: String,
-    pub color: String
+    pub color: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub font_size: Option<u8>,
 }
 
 impl Note {
-    pub fn new(title: String, content: String, user_id: String, font: String, color: String, background: String) -> Self {
+    pub fn new(title: String, content: String, user_id: String, font: String, color: String, background: String, font_size: Option<u8>) -> Self {
         let timestamp = js_sys::Date::now() as i64;
         Self {
             id: None,
@@ -30,6 +32,8 @@ impl Note {
             font: font.clone(),
             background: background.clone(),
             color: color.clone()
+            ,
+            font_size
         }
     }
 }
