@@ -7,6 +7,7 @@ use crate::models::note::User;
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace = window, js_name = auth)]
+    #[wasm_bindgen(thread_local_v2)]
     pub static AUTH: JsValue;
 }
 
@@ -17,15 +18,17 @@ impl AuthService {
         let email_val = JsValue::from_str(email);
         let password_val = JsValue::from_str(password);
         
-        let create_user_fn = Reflect::get(&AUTH, &JsValue::from_str("createUserWithEmailAndPassword"))
-            .map_err(|_| "Função não encontrada")?;
-        let create_user_fn: Function = create_user_fn.into();
-        
-        let promise = create_user_fn.call2(&AUTH, &email_val, &password_val)
-            .map_err(|e| format!("Erro ao chamar função: {:?}", e))?;
+        let promise_res = AUTH.with(|auth| {
+            Reflect::get(auth, &JsValue::from_str("createUserWithEmailAndPassword")).and_then(|f| {
+                let func: Function = f.into();
+                func.call2(auth, &email_val, &password_val)
+            })
+        });
+
+        let promise = promise_res.map_err(|e| format!("Erro ao chamar função: {:?}", e))?;
         
         let result = JsFuture::from(js_sys::Promise::from(promise)).await
-            .map_err(|e| format!("Erro ao registrar: {:?}", e))?;
+            .map_err(|e| Self::map_auth_error(&e, "Erro ao registrar"))?;
         
         Self::parse_user_from_credential(&result)
     }
@@ -34,35 +37,38 @@ impl AuthService {
         let email_val = JsValue::from_str(email);
         let password_val = JsValue::from_str(password);
         
-        let sign_in_fn = Reflect::get(&AUTH, &JsValue::from_str("signInWithEmailAndPassword"))
-            .map_err(|_| "Função não encontrada")?;
-        let sign_in_fn: Function = sign_in_fn.into();
-        
-        let promise = sign_in_fn.call2(&AUTH, &email_val, &password_val)
-            .map_err(|e| format!("Erro ao chamar função: {:?}", e))?;
+        let promise_res = AUTH.with(|auth| {
+            Reflect::get(auth, &JsValue::from_str("signInWithEmailAndPassword")).and_then(|f| {
+                let func: Function = f.into();
+                func.call2(auth, &email_val, &password_val)
+            })
+        });
+
+        let promise = promise_res.map_err(|e| format!("Erro ao chamar função: {:?}", e))?;
         
         let result = JsFuture::from(js_sys::Promise::from(promise)).await
-            .map_err(|e| format!("Erro ao fazer login: {:?}", e))?;
+            .map_err(|e| Self::map_auth_error(&e, "Erro ao fazer login"))?;
         
         Self::parse_user_from_credential(&result)
     }
     
     pub async fn logout() -> Result<(), String> {
-        let sign_out_fn = Reflect::get(&AUTH, &JsValue::from_str("signOut"))
-            .map_err(|_| "Função não encontrada")?;
-        let sign_out_fn: Function = sign_out_fn.into();
-        
-        let promise = sign_out_fn.call1(&AUTH, &JsValue::null())
-            .map_err(|e| format!("Erro ao chamar função: {:?}", e))?;
+        let promise_res = AUTH.with(|auth| {
+            Reflect::get(auth, &JsValue::from_str("signOut")).and_then(|f| {
+                let func: Function = f.into();
+                func.call1(auth, &JsValue::null())
+            })
+        });
+
+        let promise = promise_res.map_err(|e| format!("Erro ao chamar função: {:?}", e))?;
         
         JsFuture::from(js_sys::Promise::from(promise)).await
-            .map_err(|e| format!("Erro ao sair: {:?}", e))?;
+            .map_err(|e| Self::map_auth_error(&e, "Erro ao sair"))?;
         Ok(())
     }
     
     pub fn get_current_user() -> Option<User> {
-        let user = Reflect::get(&AUTH, &JsValue::from_str("currentUser"))
-            .ok()?;
+        let user = AUTH.with(|auth| Reflect::get(auth, &JsValue::from_str("currentUser"))).ok()?;
         
         if user.is_null() || user.is_undefined() {
             return None;
@@ -92,5 +98,31 @@ impl AuthService {
             .ok_or("Email inválido")?;
         
         Ok(User { uid, email })
+    }
+
+    fn map_auth_error(err: &JsValue, prefix: &str) -> String {
+        // Try to extract Firebase-style `code` and `message` fields from the error JsValue
+        let code = js_sys::Reflect::get(err, &JsValue::from_str("code")).ok()
+            .and_then(|v| v.as_string());
+        let message = js_sys::Reflect::get(err, &JsValue::from_str("message")).ok()
+            .and_then(|v| v.as_string());
+
+        if let Some(code) = code {
+            // Map common Firebase auth codes to friendly Portuguese messages
+            let friendly = match code.as_str() {
+                "auth/wrong-password" => "Senha incorreta. Verifique e tente novamente.",
+                "auth/user-not-found" => "Usuário não encontrado. Verifique o email cadastrado.",
+                "auth/invalid-email" => "Formato de email inválido.",
+                "auth/email-already-in-use" => "Este email já está em uso.",
+                "auth/weak-password" => "Senha muito fraca. Use pelo menos 6 caracteres.",
+                "auth/invalid-credential" => "Credenciais incorretas, tente novamente!",
+                _ => message.as_deref().unwrap_or(&code),
+            };
+            format!("{}: {}", prefix, friendly)
+        } else if let Some(msg) = message {
+            format!("{}: {}", prefix, msg)
+        } else {
+            format!("{}: erro desconhecido", prefix)
+        }
     }
 }

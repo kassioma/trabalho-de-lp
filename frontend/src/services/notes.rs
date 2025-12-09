@@ -2,11 +2,12 @@
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 use js_sys::{Array, Object, Reflect, Function};
-use crate::models::note::Note;
+use crate::models::note::{Note, NoteHistory};
 
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace = window, js_name = db)]
+    #[wasm_bindgen(thread_local_v2)]
     pub static DB: JsValue;
 }
 
@@ -102,12 +103,14 @@ impl NotesService {
     }
     
     fn get_collection(name: &str) -> Result<JsValue, String> {
-        let collection_fn = Reflect::get(&DB, &JsValue::from_str("collection"))
-            .map_err(|_| "Método collection não encontrado")?;
-        let collection_fn: Function = collection_fn.into();
-        
-        collection_fn.call1(&DB, &JsValue::from_str(name))
-            .map_err(|e| format!("Erro ao chamar collection: {:?}", e))
+        let res = DB.with(|db| {
+            Reflect::get(db, &JsValue::from_str("collection")).and_then(|f| {
+                let func: Function = f.into();
+                func.call1(db, &JsValue::from_str(name))
+            })
+        });
+
+        res.map_err(|e| format!("Erro ao chamar collection: {:?}", e))
     }
     
     fn get_doc(collection: &JsValue, id: &str) -> Result<JsValue, String> {
@@ -128,8 +131,22 @@ impl NotesService {
             .map_err(|e| format!("Erro ao chamar where: {:?}", e))
     }
     
+
     fn note_to_js(note: &Note) -> Result<JsValue, String> {
         let obj = Object::new();
+
+        let js_history = Array::new();
+
+        for history_item in &note.history {
+            let js_item = Object::new();
+            Reflect::set(&js_item, &"title".into(), &JsValue::from_str(&history_item.title))
+                .map_err(|_| "Erro ao definir título do history")?;
+            Reflect::set(&js_item, &"content".into(), &JsValue::from_str(&history_item.content))
+                .map_err(|_| "Erro ao definir content do history")?;
+            Reflect::set(&js_item, &"updatedAt".into(), &JsValue::from_f64(history_item.updated_at as f64))
+                .map_err(|_| "Erro ao definir updatedAt do history")?;
+            js_history.push(&js_item.into());
+        }
         
         Reflect::set(&obj, &"title".into(), &JsValue::from_str(&note.title))
             .map_err(|_| "Erro ao definir título")?;
@@ -141,7 +158,18 @@ impl NotesService {
             .map_err(|_| "Erro ao definir createdAt")?;
         Reflect::set(&obj, &"updatedAt".into(), &JsValue::from_f64(note.updated_at as f64))
             .map_err(|_| "Erro ao definir updatedAt")?;
-        
+        Reflect::set(&obj, &"history".into(), &js_history).map_err(|_| "Erro ao definir history")
+            .map_err(|_| "Erro ao definir history")?;
+        Reflect::set(&obj, &"font".into(), &JsValue::from_str(&note.font))
+            .map_err(|_| "Erro ao definir font")?;
+        Reflect::set(&obj, &"background".into(), &JsValue::from_str(&note.background))
+            .map_err(|_| "Erro ao definir background")?;
+        Reflect::set(&obj, &"color".into(), &JsValue::from_str(&note.color))
+            .map_err(|_| "Erro ao definir color")?;
+        if let Some(size) = note.font_size {
+            Reflect::set(&obj, &"fontSize".into(), &JsValue::from_f64(size as f64))
+                .map_err(|_| "Erro ao definir fontSize")?;
+        }
         Ok(obj.into())
     }
     
@@ -181,6 +209,53 @@ impl NotesService {
             .ok()
             .and_then(|v| v.as_f64())
             .unwrap_or(0.0) as i64;
+
+        let js_value = Reflect::get(&data_obj, &"history".into())
+            .map_err(|_| "Histórico não encontrado")?;
+
+        let history: Vec<NoteHistory> = if let Some(arr) = js_value.dyn_ref::<Array>() {
+            arr.iter()
+                .filter_map(|item| {
+                    let title = Reflect::get(&item, &"title".into())
+                        .ok()
+                        .and_then(|v| v.as_string())
+                        .unwrap_or_default();
+
+                    let content = Reflect::get(&item, &"content".into())
+                        .ok()
+                        .and_then(|v| v.as_string())
+                        .unwrap_or_default();
+
+                    let updated_at = Reflect::get(&item, &"updatedAt".into())
+                        .ok()
+                        .and_then(|v| v.as_f64())
+                        .unwrap_or(0.0) as i64;
+                    Some(NoteHistory { title, content, updated_at })
+                })
+                .collect()
+        } else {
+            vec![]
+        };
+
+        let font = Reflect::get(&data_obj, &"font".into())
+        .ok()
+        .and_then(|v|v.as_string())
+        .unwrap_or_default();
+
+        let color = Reflect::get(&data_obj, &"color".into())
+        .ok()
+        .and_then(|v|v.as_string())
+        .unwrap_or_default();
+
+        let background = Reflect::get(&data_obj, &"background".into())
+        .ok()
+        .and_then(|v|v.as_string())
+        .unwrap_or_default();
+
+        let font_size = Reflect::get(&data_obj, &"fontSize".into())
+            .ok()
+            .and_then(|v| v.as_f64())
+            .map(|n| n as u8);
         
         Ok(Note {
             id,
@@ -189,6 +264,12 @@ impl NotesService {
             user_id,
             created_at,
             updated_at,
+            history,
+            font,
+            background,
+            color
+            ,
+            font_size
         })
     }
 }

@@ -1,5 +1,7 @@
 // src/components/dashboard.rs
 use yew::prelude::*;
+use pulldown_cmark::{Parser, Options, html};
+use ammonia::clean;
 use yew_router::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 use crate::services::{auth::AuthService, notes::NotesService};
@@ -15,6 +17,7 @@ pub fn dashboard() -> Html {
     let loading = use_state(|| true);
     let user = use_state(|| AuthService::get_current_user());
     let show_editor = use_state(|| false);
+    
     
     // Verificar autenticação
     {
@@ -72,8 +75,8 @@ pub fn dashboard() -> Html {
         let show_editor = show_editor.clone();
         let selected_note = selected_note.clone();
         Callback::from(move |_| {
-            selected_note.set(None);
             show_editor.set(true);
+            selected_note.set(None);
         })
     };
     
@@ -81,15 +84,20 @@ pub fn dashboard() -> Html {
         let selected_note = selected_note.clone();
         let show_editor = show_editor.clone();
         Callback::from(move |note: Note| {
-            selected_note.set(Some(note));
+            selected_note.set(Some(note.clone()));
             show_editor.set(true);
         })
     };
+
     
     let on_delete_note = {
+        let show_editor = show_editor.clone();
+        let selected_note = selected_note.clone();
         let notes = notes.clone();
         Callback::from(move |note_id: String| {
             let notes = notes.clone();
+            show_editor.set(false);
+            selected_note.set(None);
             spawn_local(async move {
                 if let Ok(_) = NotesService::delete_note(&note_id).await {
                     notes.set(notes.iter().filter(|n| n.id.as_ref() != Some(&note_id)).cloned().collect());
@@ -180,10 +188,9 @@ pub fn dashboard() -> Html {
             
             <main class="dashboard-main">
                 <div class="notes-sidebar">
-                    <button onclick={on_new_note} class="btn-primary btn-new-note">
+                    <button onclick={on_new_note} class="btn-primary btn-new-note" disabled={selected_note.is_some()}> 
                         { "+ Nova Nota" }
                     </button>
-                    
                     if *loading {
                         <div class="loading">{ "Carregando notas..." }</div>
                     } else if notes.is_empty() {
@@ -206,7 +213,19 @@ pub fn dashboard() -> Html {
                                             onclick={Callback::from(move |_| on_select.emit(note_clone.clone()))}
                                         >
                                             <h3>{ &note.title }</h3>
-                                            <p>{ truncate(&note.content, 100) }</p>
+                                            { (|| {
+                                                let snippet = truncate_chars(&note.content, 200);
+                                                let mut options = Options::empty();
+                                                options.insert(Options::ENABLE_TABLES);
+                                                options.insert(Options::ENABLE_FOOTNOTES);
+                                                options.insert(Options::ENABLE_STRIKETHROUGH);
+                                                options.insert(Options::ENABLE_TASKLISTS);
+                                                let parser = Parser::new_ext(&snippet, options);
+                                                let mut html_out = String::new();
+                                                html::push_html(&mut html_out, parser);
+                                                let safe = clean(&html_out);
+                                                html! { <p>{ Html::from_html_unchecked(AttrValue::from(safe)) }</p> }
+                                            })() }
                                             <small>{ format_date(note.updated_at) }</small>
                                         </div>
                                         <button
@@ -247,12 +266,16 @@ pub fn dashboard() -> Html {
     }
 }
 
-fn truncate(s: &str, max_len: usize) -> String {
-    if s.len() <= max_len {
-        s.to_string()
-    } else {
-        format!("{}...", &s[..max_len])
+fn truncate_chars(s: &str, max_chars: usize) -> String {
+    let mut out = String::new();
+    for (i, ch) in s.chars().enumerate() {
+        if i >= max_chars { break; }
+        out.push(ch);
     }
+    if s.chars().count() > max_chars {
+        out.push_str("...");
+    }
+    out
 }
 
 fn format_date(timestamp: i64) -> String {
