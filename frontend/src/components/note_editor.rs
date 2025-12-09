@@ -29,6 +29,19 @@ pub fn note_editor(props: &NoteEditorProps) -> Html {
             .unwrap_or_default()
     });
 
+    // Keep a copy of the saved/current note values so "Versão Seguinte" can restore them
+    let saved_title = use_state(|| {
+        props.note.as_ref()
+            .map(|n| n.title.clone())
+            .unwrap_or_default()
+    });
+
+    let saved_content = use_state(|| {
+        props.note.as_ref()
+            .map(|n| n.content.clone())
+            .unwrap_or_default()
+    });
+
     let history = use_state(|| {
         props.note.as_ref()
             .map(|n| n.history.clone())
@@ -116,7 +129,9 @@ pub fn note_editor(props: &NoteEditorProps) -> Html {
         let font = selected_font.clone();
         let background = background_color.clone();
         let font_size = font_size.clone();
-        
+        let saved_title_state = saved_title.clone();
+        let saved_content_state = saved_content.clone();
+
         Callback::from(move |_| {
             if title.is_empty() {
                 web_sys::window()
@@ -152,6 +167,9 @@ pub fn note_editor(props: &NoteEditorProps) -> Html {
             };
             
             on_save.emit(note);
+            // update saved copies so history navigation can restore the latest
+            saved_title_state.set((*title).clone());
+            saved_content_state.set((*content).clone());
         })
     };
     
@@ -191,6 +209,7 @@ pub fn note_editor(props: &NoteEditorProps) -> Html {
         let history = history.clone();
         let content = content.clone();
         let title = title.clone();
+        let current_version_index = current_version_index.clone();
 
         Callback::from(move |_: MouseEvent| {
             if *current_version_index > 0 {
@@ -200,11 +219,40 @@ pub fn note_editor(props: &NoteEditorProps) -> Html {
                     content.set(previous_note.content.clone());
                     current_version_index.set(new_index);
                 }
+            }
+        })
+    };
+
+    let on_later_click = {
+        let history = history.clone();
+        let content = content.clone();
+        let title = title.clone();
+        let current_version_index = current_version_index.clone();
+        let saved_title = saved_title.clone();
+        let saved_content = saved_content.clone();
+
+        Callback::from(move |_: MouseEvent| {
+            let max_index = history.len();
+            // current_version_index refers to a position in history (0..=len)
+            if *current_version_index < max_index {
+                let new_index = *current_version_index + 1;
+                if new_index == max_index {
+                    // restore saved (latest) values
+                    title.set((*saved_title).clone());
+                    content.set((*saved_content).clone());
+                    current_version_index.set(new_index);
+                } else if let Some(next_note) = history.get(new_index as usize) {
+                    title.set(next_note.title.clone());
+                    content.set(next_note.content.clone());
+                    current_version_index.set(new_index);
+                } else {
+                    web_sys::window()
+                        .unwrap()
+                        .alert_with_message("Esta é a versão mais recente.")
+                        .unwrap();
+                }
             } else {
-                web_sys::window()
-                    .unwrap()
-                    .alert_with_message("Esta é a primeira versão.")
-                    .unwrap();
+                // no-op when already at latest (button will be disabled)
             }
         })
     };
@@ -420,9 +468,8 @@ pub fn note_editor(props: &NoteEditorProps) -> Html {
                         <button onclick={on_toggle_preview.clone()} class="btn-secondary">
                             { if *preview { "Editar" } else { "Visualizar" } }
                         </button>
-                        <button onclick={&on_earlier_click} class="btn-secondary">
-                            { "Versão Anterior"}
-                        </button>
+                        <button onclick={&on_earlier_click} class="btn-secondary" disabled={ *current_version_index == 0 }>{ "Versão Anterior" }</button>
+                        <button onclick={&on_later_click} class="btn-secondary" disabled={ *current_version_index >= history.len() }>{ "Versão Seguinte" }</button>
                         <button onclick={&on_close_click} class="btn-secondary">
                             { "Cancelar" }
                         </button>

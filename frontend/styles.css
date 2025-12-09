@@ -106,11 +106,19 @@ body {
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: background 0.2s, opacity 0.2s, transform 0.2s;
 }
 
-.btn-secondary:hover {
+.btn-secondary:hover:not(:disabled) {
     background: #cbd5e0;
+    transform: translateY(-1px);
+}
+
+.btn-secondary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #f3f4f6;
+    color: #a0aec0;
 }
 
 .btn-link {
